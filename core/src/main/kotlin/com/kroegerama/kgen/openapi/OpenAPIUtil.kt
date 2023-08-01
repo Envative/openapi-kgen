@@ -7,10 +7,10 @@ import io.swagger.v3.parser.core.models.ParseOptions
 
 fun parseSpecFile(specFile: String, allowParseErrors: Boolean): OpenAPI {
     val parseOpts = ParseOptions().apply {
-        isResolve = true
-        isFlatten = true
-        isResolveFully = true
-        isFlattenComposedSchemas = true
+//        isResolve = true
+//        isFlatten = true
+//        isResolveFully = true
+//        isFlattenComposedSchemas = true
         isResolveCombinators = true
     }
 

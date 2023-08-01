@@ -1,19 +1,22 @@
 package com.kroegerama.kgen.cli
 
+import com.github.rvesse.airline.annotations.Cli
+import com.github.rvesse.airline.help.Help
 import com.kroegerama.kgen.Constants
-import com.kroegerama.kgen.Util
-import io.airlift.airline.Cli
-import io.airlift.airline.Help
 
-fun main(args: Array<String>) {
-    Cli.CliBuilder<Runnable>(Constants.CLI_NAME)
-        .withDescription(Util.generatorInfo)
-        .withDefaultCommand(Help::class.java)
-        .withCommands(
-            Generate::class.java,
-            Help::class.java
+@Cli(
+    name = Constants.CLI_NAME,
+    description = "", //Util.generatorInfo,
+    defaultCommand = Help::class,
+    commands = [Help::class, Generate::class]
+)
+object CommandLine {
+    @JvmStatic
+    fun main(args: Array<String>) {
+        val cli = com.github.rvesse.airline.Cli<Runnable>(
+            CommandLine::class.java
         )
-        .build()
-        .parse(*args)
-        .run()
+        val cmd = cli.parse(*args)
+        cmd.run()
+    }
 }

@@ -47,13 +47,11 @@ class ModelFilesGenerator(
         if (enums.isEmpty()) {
             emptyList()
         } else {
-            listOf(
-                prepareFileSpec(options.modelPackage, "\$Enums") {
-                    enums.forEach { enum ->
-                        addType(enum)
-                    }
+            enums.map { enum ->
+                prepareFileSpec(options.modelPackage, enum.name ?: "") {
+                    addType(enum)
                 }
-            )
+            }
         }
     }
 
@@ -152,6 +150,7 @@ class ModelFilesGenerator(
     }
 
     private fun getEnums(): List<TypeSpec> = mutableListOf<TypeSpec>().apply {
+//        with(analyzer.newEnums) {
         with(analyzer.enums) {
             forEach { schemaInfo ->
                 val schema = schemaInfo.schema

@@ -7,61 +7,59 @@ import com.kroegerama.kgen.generator.Generator
 import com.kroegerama.kgen.openapi.OpenAPIAnalyzer
 import com.kroegerama.kgen.openapi.parseSpecFile
 import com.kroegerama.kgen.poet.PoetGenerator
-import io.airlift.airline.Arguments
-import io.airlift.airline.Command
-import io.airlift.airline.Option
+import com.github.rvesse.airline.annotations.Arguments
+import com.github.rvesse.airline.annotations.Command
+import com.github.rvesse.airline.annotations.Option
 import java.io.File
 
 @Command(name = "generate", description = "Generate code from the specified OpenAPI Spec.")
 class Generate : Runnable {
 
-    @Option(name = ["-p", "--package-name"], title = "package name")
+    @Option(name = ["-p", "--package-name"], title = ["package name"])
     private val packageName: String = Constants.DEFAULT_PACKAGE_NAME
 
     @Option(
         name = ["-o", "--output"],
-        title = "output directory",
-        required = true
+        title = ["output directory"]
     )
     private val output = ""
 
     @Arguments(
-        title = "spec file",
-        description = "Spec file (yaml/json). Can be a file or url.",
-        required = true
+        title = ["spec file"],
+        description = "Spec file (yaml/json). Can be a file or url."
     )
     private val specFile = ""
 
     @Option(
         name = ["-l", "--limit-apis"],
-        title = "limit apis",
+        title = ["limit apis"],
         description = "If set, generate only these APIs (set via tag) and their models. Comma separated list. Example: \"auth,app\""
     )
     private val limitApis = ""
 
     @Option(
         name = ["-v", "--verbose"],
-        title = "detailed output"
+        title = ["detailed output"]
     )
     private val verbose = true
 
     @Option(
         name = ["-d", "--dry-run"],
-        title = "Dry run",
+        title = ["Dry run"],
         description = "Do not create any files. Just parse and analyze."
     )
     private val dryRun = false
 
     @Option(
         name = ["--use-inline-class"],
-        title = "Use inline class",
+        title = ["Use inline class"],
         description = "Use inline classes for named primitive types. Else use typealias."
     )
     private val useInlineClass = false
 
     @Option(
         name = ["--allow-parse-errors"],
-        title = "Allow parse errors",
+        title = ["Allow parse errors"],
         description = "Try to generate classes, even if parsing errors occur in the spec."
     )
     private val allowParseErrors = false

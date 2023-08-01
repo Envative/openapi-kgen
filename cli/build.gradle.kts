@@ -14,13 +14,13 @@ dependencies {
 tasks {
     named<ShadowJar>("shadowJar") {
         archiveBaseName.set("openapi-kgen-cli")
-        archiveClassifier.set("")
+        archiveClassifier.set("shadow")
 
-        mergeServiceFiles()
+//        mergeServiceFiles()
         manifest {
             attributes(
                 mapOf(
-                    "Main-Class" to "com.kroegerama.kgen.cli.CommandLineKt"
+                    "Main-Class" to "com.kroegerama.kgen.cli.CommandLine"
                 )
             )
         }

@@ -89,7 +89,9 @@ class OpenAPIAnalyzer(
     }
 
     private fun buildModelTree(): ModelTree {
-        val allSchemaInfo = openAPI.getAllSchemas(options.limitApis)
+        val allSchemaInfo =
+            openAPI.getAllSchemas(options.limitApis)
+                .filter { !it.rawName.contains("->") }
         val rootSchemas = mutableListOf<SchemaWithInfo>()
         val unnamedSchemas = mutableListOf<SchemaWithInfo>()
         val oneOfs = mutableMapOf<SchemaWithInfo, MutableList<SchemaWithInfo>>()
@@ -129,6 +131,7 @@ class OpenAPIAnalyzer(
                             removeItems += child
                         }
                     }
+
                     SchemaType.AnyOf -> rootSchemas.add(schemaInfo)
                 }
             } else if (schemaType !in ignoredAnonymousTypes) {
@@ -213,24 +216,34 @@ class OpenAPIAnalyzer(
 
         return when (schema.getSchemaType()) {
             SchemaType.Primitive -> schema.mapToTypeName()
-            SchemaType.Enum -> schema.mapToTypeName()
+            SchemaType.Enum -> ClassName(options.modelPackage, schema.name)
             SchemaType.Array -> {
                 val arr = schema as ArraySchema
                 val inner = findTypeNameFor(arr.items)
                 LIST.parameterizedBy(inner)
             }
+
             SchemaType.Map -> {
                 val map = schema as MapSchema
                 val inner = findTypeNameFor(map.additionalProperties as Schema<*>)
                 MAP.parameterizedBy(STRING, inner)
             }
+
             SchemaType.Ref -> {
                 val refTypeName = schema.getRefTypeName()
-                val refType = openAPI.components.schemas[refTypeName] ?: throw IllegalStateException("Schema not found $refTypeName")
+                val refType = openAPI.components.schemas[refTypeName]
+                    ?: throw IllegalStateException("Schema not found $refTypeName")
                 findTypeNameFor(refType)
             }
+
+            SchemaType.AllOf -> {
+                val refTypeName = schema.allOf.first().getRefTypeName()
+                val refType = openAPI.components.schemas[refTypeName]
+                    ?: throw IllegalStateException("Schema not found $refTypeName")
+                findTypeNameFor(refType)
+            }
+
             SchemaType.Object,
-            SchemaType.AllOf,
             SchemaType.OneOf,
             SchemaType.AnyOf -> throw IllegalStateException()
         }
@@ -246,13 +259,26 @@ class OpenAPIAnalyzer(
     ): Collection<SchemaWithInfo> {
         val visited = mutableSetOf<SchemaWithInfo>()
 
-        visit(tagFilter) { path, schema ->
+//        visit(tagFilter) { path, schema ->
+//            visited.add(
+//                SchemaWithInfo(
+//                    schema = schema,
+//                    rawName = findRawNameFor(schema)
+//                        ?: if (!schema.name.isNullOrEmpty()) schema.name
+//                        else path.joinToString("->"),
+//                    schemaType = schema.getSchemaType(),
+//                    path = path
+//                )
+//            )
+//        }
+
+        this.components.schemas.forEach {
             visited.add(
                 SchemaWithInfo(
-                    schema = schema,
-                    rawName = findRawNameFor(schema) ?: "",
-                    schemaType = schema.getSchemaType(),
-                    path = path
+                    schema = it.value,
+                    rawName = it.key,
+                    schemaType = it.value.getSchemaType(),
+                    path = listOf("")
                 )
             )
         }

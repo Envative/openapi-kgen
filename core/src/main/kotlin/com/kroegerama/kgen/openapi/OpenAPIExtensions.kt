@@ -27,12 +27,14 @@ fun Schema<*>.mapToTypeName(): ClassName = when (this) {
         SchemaTypeUtil.INTEGER64_FORMAT -> LONG
         else -> throw IllegalStateException("Integer format not allowed: $format")
     }
+
     is NumberSchema -> when (format) {
         null -> FLOAT
         SchemaTypeUtil.FLOAT_FORMAT -> FLOAT
         SchemaTypeUtil.DOUBLE_FORMAT -> DOUBLE
         else -> throw IllegalStateException("Number format not allowed: $format")
     }
+
     is BooleanSchema -> BOOLEAN
 
     is BinarySchema -> BYTE_ARRAY
@@ -46,7 +48,9 @@ fun Schema<*>.mapToTypeName(): ClassName = when (this) {
     is DateSchema -> PoetConstants.DATE
     is DateTimeSchema -> PoetConstants.DATE
 
-    else -> throw IllegalStateException("Schema not supported: ${this.javaClass.simpleName} (type: ${this.type}, format: ${this.format})")
+    else -> {
+        throw IllegalStateException("Schema not supported: ${this.javaClass.simpleName} (type: ${this.type}, format: ${this.format})")
+    }
 }
 
 fun Schema<*>.getSchemaType() = when {
@@ -125,11 +129,13 @@ fun SecurityScheme.mapToType(): SecurityType = when (type) {
         "bearer" -> SecurityType.Bearer
         else -> SecurityType.Unknown
     }
+
     SecurityScheme.Type.APIKEY -> when (`in`) {
         SecurityScheme.In.HEADER -> SecurityType.Header
         SecurityScheme.In.QUERY -> SecurityType.Query
         else -> SecurityType.Unknown
     }
+
     SecurityScheme.Type.OAUTH2 -> SecurityType.OAuth
     else -> SecurityType.Unknown
 }

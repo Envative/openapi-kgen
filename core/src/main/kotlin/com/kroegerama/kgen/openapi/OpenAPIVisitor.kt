@@ -208,6 +208,7 @@ private fun OpenAPI.visitSchema(
     val refType = schema.getRefTypeName()
     if (refType != null) {
         components?.schemas.orEmpty()[refType]?.let { refSchema ->
+            refSchema.name = refType
             visitSchema(visFun, parentPath + "ref", refSchema, tagFilter, visitor)
         }
         return
@@ -227,14 +228,22 @@ private fun OpenAPI.visitSchema(
                 visitSchema(visFun, parentPath + "anyOf", s, tagFilter, visitor)
             }
         }
+
         is ArraySchema -> {
             schema.items?.let { items ->
                 visitSchema(visFun, parentPath + "items", items, tagFilter, visitor)
             }
         }
+
         is MapSchema -> {
             (schema.additionalProperties as? Schema<*>)?.let { additionalProperties ->
-                visitSchema(visFun, parentPath + "additionalProperties", additionalProperties, tagFilter, visitor)
+                visitSchema(
+                    visFun,
+                    parentPath + "additionalProperties",
+                    additionalProperties,
+                    tagFilter,
+                    visitor
+                )
             }
         }
     }
@@ -242,6 +251,23 @@ private fun OpenAPI.visitSchema(
         visitSchema(visFun, parentPath + "not", not, tagFilter, visitor)
     }
     schema.properties.orEmpty().forEach { (propertyName, property) ->
-        visitSchema(visFun, parentPath + propertyName, property, tagFilter, visitor)
+
+        if (!property.enum.isNullOrEmpty()) {
+            var foundComponentName: String? = null
+            var foundComponentProperty: Schema<*>? = null
+            this.components.schemas.forEach {
+                if (it.value.enum == property.enum) {
+                    foundComponentName = it.key
+                    foundComponentProperty = it.value
+                }
+            }
+
+            if (foundComponentProperty != null && foundComponentName != null) {
+                property.name = foundComponentName
+                visitSchema(visFun, parentPath + propertyName, property, tagFilter, visitor)
+            }
+        } else {
+            visitSchema(visFun, parentPath + propertyName, property, tagFilter, visitor)
+        }
     }
 }
