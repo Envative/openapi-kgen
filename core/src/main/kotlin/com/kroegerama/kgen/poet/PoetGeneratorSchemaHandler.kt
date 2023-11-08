@@ -64,7 +64,12 @@ class PoetGeneratorSchemaHandler(
     override fun MapSchema.createMapTypeAlias(name: String): TypeAliasSpec {
         val valueSchema = additionalProperties as? Schema<*>
         val valueType = valueSchema?.let {
-            analyzer.findTypeNameFor(valueSchema)
+            try {
+                analyzer.findTypeNameFor(valueSchema)
+            } catch(e: Exception) {
+                e.printStackTrace()
+                ANY
+            }
         } ?: ANY
         val mapType = MAP.parameterizedBy(STRING, valueType)
 
