@@ -110,7 +110,10 @@ class OpenAPIAnalyzer(
             if (name.isNotEmpty()) {
                 when (schemaInfo.schemaType) {
                     SchemaType.Array -> namedArrays.add(schemaInfo)
-                    SchemaType.Map -> namedMaps.add(schemaInfo)
+                    SchemaType.Map -> {
+                        if(schemaInfo.schema.type == "object") rootSchemas.add(schemaInfo)
+                        else namedMaps.add(schemaInfo)
+                    }
                     SchemaType.Primitive -> namedPrimitives.add(schemaInfo)
                     SchemaType.Enum -> enums.add(schemaInfo)
                     SchemaType.Object -> rootSchemas.add(schemaInfo)
