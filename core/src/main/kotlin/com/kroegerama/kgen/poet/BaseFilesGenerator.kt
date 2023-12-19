@@ -253,7 +253,7 @@ class BaseFilesGenerator(
 
                 if (isObservableApiSyntaxType) {
                     addStatement(
-                        "addCallAdapterFactory(%T.createWithScheduler(%T))",
+                        "addCallAdapterFactory(%T.createWithScheduler(%T.io()))",
                         ClassName("retrofit2.adapter.rxjava2", "RxJava2CallAdapterFactory"),
                         ClassName("io.reactivex.schedulers", "Schedulers")
                     )
