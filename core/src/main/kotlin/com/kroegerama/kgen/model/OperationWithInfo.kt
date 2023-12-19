@@ -56,7 +56,6 @@ data class OperationWithInfo(
         return "OperationWithInfo(path='$path', method=$method, operation=${operation.operationId}, tags=$tags, securityNames=$securityNames)"
     }
 
-
     companion object {
         private val preferredMimes = listOf(
             Constants.MIME_TYPE_JSON,

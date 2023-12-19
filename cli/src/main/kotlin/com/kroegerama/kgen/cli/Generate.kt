@@ -64,6 +64,13 @@ class Generate : Runnable {
     )
     private val allowParseErrors = false
 
+    @Option(
+        name = ["--api-method-syntax-type"],
+        title = ["Type of Api Method Syntax to generate"],
+        description = "Generate different types of Api Syntax (Acceptable Types: Coroutines, Observable)"
+    )
+    private val apiMethodSyntaxType = ""
+
     override fun run() {
         val options = OptionSet(
             specFile = specFile,
@@ -73,7 +80,7 @@ class Generate : Runnable {
             verbose = verbose,
             dryRun = dryRun,
             useInlineClass = useInlineClass,
-            outputDirIsSrcDir = false
+            outputDirIsSrcDir = false,
         )
         println("Selected options: $options")
         println()
@@ -87,9 +94,11 @@ class Generate : Runnable {
         if (options.verbose) println("Parsing spec file...")
         val openAPI = parseSpecFile(options.specFile, allowParseErrors)
 
+        val isObservableApiSyntaxType = apiMethodSyntaxType != null && apiMethodSyntaxType == "Observable"
+
         if (options.verbose) println("Generating...")
         val analyzer = OpenAPIAnalyzer(openAPI, options)
-        val poetGenerator = PoetGenerator(openAPI, options, analyzer)
+        val poetGenerator = PoetGenerator(openAPI, options, analyzer, isObservableApiSyntaxType)
         val fileHelper = FileHelper(options)
         val generator = Generator(options, poetGenerator, fileHelper, analyzer)
 

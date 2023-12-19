@@ -21,7 +21,8 @@ interface IBaseFilesGenerator {
 class BaseFilesGenerator(
     openAPI: OpenAPI,
     options: OptionSet,
-    analyzer: OpenAPIAnalyzer
+    analyzer: OpenAPIAnalyzer,
+    private val isObservableApiSyntaxType: Boolean = false
 ) : IBaseFilesGenerator,
     IPoetGeneratorBase by PoetGeneratorBase(openAPI, options, analyzer) {
 
@@ -137,46 +138,67 @@ class BaseFilesGenerator(
                 setter(setFun)
             }
 
-            val pCurrentMoshi = poetProperty(mnCurrentMoshi.simpleName, PoetConstants.MOSHI.nullable(true)) {
-                mutable()
-                addModifiers(KModifier.PRIVATE)
-                initializer("null")
-            }
+            val pCurrentMoshi =
+                poetProperty(mnCurrentMoshi.simpleName, PoetConstants.MOSHI.nullable(true)) {
+                    mutable()
+                    addModifiers(KModifier.PRIVATE)
+                    initializer("null")
+                }
 
-            val pCurrentClient = poetProperty(mnCurrentClient.simpleName, PoetConstants.OK_CLIENT.nullable(true)) {
-                mutable()
-                addModifiers(KModifier.PRIVATE)
-                initializer("null")
-            }
+            val pCurrentClient =
+                poetProperty(mnCurrentClient.simpleName, PoetConstants.OK_CLIENT.nullable(true)) {
+                    mutable()
+                    addModifiers(KModifier.PRIVATE)
+                    initializer("null")
+                }
 
-            val pCurrentRetrofit = poetProperty(mnCurrentRetrofit.simpleName, PoetConstants.RETROFIT.nullable(true)) {
-                mutable()
-                addModifiers(KModifier.PRIVATE)
-                initializer("null")
-            }
+            val pCurrentRetrofit =
+                poetProperty(mnCurrentRetrofit.simpleName, PoetConstants.RETROFIT.nullable(true)) {
+                    mutable()
+                    addModifiers(KModifier.PRIVATE)
+                    initializer("null")
+                }
 
             val pMoshi = poetProperty(mnMoshi.simpleName, PoetConstants.MOSHI) {
                 val getFun = FunSpec.getterBuilder().apply {
-                    addStatement("return %N ?: %N().also { %N = it }", mnCurrentMoshi, fnCreateMoshi, mnCurrentMoshi)
+                    addStatement(
+                        "return %N ?: %N().also { %N = it }",
+                        mnCurrentMoshi,
+                        fnCreateMoshi,
+                        mnCurrentMoshi
+                    )
                 }.build()
                 getter(getFun)
             }
 
             val pClient = poetProperty(mnClient.simpleName, PoetConstants.OK_CLIENT) {
                 val getFun = FunSpec.getterBuilder().apply {
-                    addStatement("return %N ?: %N().also { %N = it }", mnCurrentClient, fnCreateClient, mnCurrentClient)
+                    addStatement(
+                        "return %N ?: %N().also { %N = it }",
+                        mnCurrentClient,
+                        fnCreateClient,
+                        mnCurrentClient
+                    )
                 }.build()
                 getter(getFun)
             }
 
             val pRetrofit = poetProperty(mnRetrofit.simpleName, PoetConstants.RETROFIT) {
                 val getFun = FunSpec.getterBuilder().apply {
-                    addStatement("return %N ?: %N().also { %N = it }", mnCurrentRetrofit, fnCreateRetrofit, mnCurrentRetrofit)
+                    addStatement(
+                        "return %N ?: %N().also { %N = it }",
+                        mnCurrentRetrofit,
+                        fnCreateRetrofit,
+                        mnCurrentRetrofit
+                    )
                 }.build()
                 getter(getFun)
             }
 
-            val pApiMap = poetProperty(mnApiHolder.simpleName, MUTABLE_MAP.parameterizedBy(Class::class.asClassName().parameterizedBy(STAR), ANY)) {
+            val pApiMap = poetProperty(
+                mnApiHolder.simpleName,
+                MUTABLE_MAP.parameterizedBy(Class::class.asClassName().parameterizedBy(STAR), ANY)
+            ) {
                 addModifiers(KModifier.PRIVATE)
                 initializer("%M()", PoetConstants.MUTABLE_MAP_OF)
             }
@@ -191,7 +213,11 @@ class BaseFilesGenerator(
             val fCreateMoshi = poetFunSpec(fnCreateMoshi.simpleName) {
                 addModifiers(KModifier.PRIVATE)
                 beginControlFlow("return %T().run", PoetConstants.MOSHI_BUILDER)
-                addStatement("add(%T::class.java, %T())", PoetConstants.DATE, PoetConstants.RFCDateAdapter)
+                addStatement(
+                    "add(%T::class.java, %T())",
+                    PoetConstants.DATE,
+                    PoetConstants.RFCDateAdapter
+                )
                 addStatement("%N?.apply { decorate() }", mnDecorator)
                 addStatement("build()")
                 endControlFlow()
@@ -211,9 +237,28 @@ class BaseFilesGenerator(
                 beginControlFlow("return %T().run", PoetConstants.RETROFIT_BUILDER)
                 addStatement("baseUrl(%M.first())", MemberName(options.packageName, "serverList"))
                 addStatement("client(%N)", mnClient)
-                addStatement("addConverterFactory(%T.create())", ClassName("retrofit2.converter.scalars", "ScalarsConverterFactory"))
-                addStatement("addConverterFactory(%T.create(%N))", ClassName("retrofit2.converter.moshi", "MoshiConverterFactory"), mnMoshi)
-                addStatement("addConverterFactory(%T)", ClassName(options.packageName, "EnumConverterFactory"))
+                addStatement(
+                    "addConverterFactory(%T.create())",
+                    ClassName("retrofit2.converter.scalars", "ScalarsConverterFactory")
+                )
+                addStatement(
+                    "addConverterFactory(%T.create(%N))",
+                    ClassName("retrofit2.converter.moshi", "MoshiConverterFactory"),
+                    mnMoshi
+                )
+                addStatement(
+                    "addConverterFactory(%T)",
+                    ClassName(options.packageName, "EnumConverterFactory")
+                )
+
+                if (isObservableApiSyntaxType) {
+                    addStatement(
+                        "addCallAdapterFactory(%T.createWithScheduler(%T))",
+                        ClassName("retrofit2.adapter.rxjava2", "RxJava2CallAdapterFactory"),
+                        ClassName("io.reactivex.schedulers", "Schedulers")
+                    )
+                }
+
                 addStatement("%N?.apply { decorate() }", mnDecorator)
                 addStatement("build()")
                 endControlFlow()
@@ -229,7 +274,12 @@ class BaseFilesGenerator(
                     CodeBlock.builder()
                         .add("return %N.getOrPut(%T::class.java) {\n", mnApiHolder, generic)
                         .indent()
-                        .add("%N.%M<%T>()\n", mnRetrofit, PoetConstants.RETROFIT_CREATE_FUN, generic)
+                        .add(
+                            "%N.%M<%T>()\n",
+                            mnRetrofit,
+                            PoetConstants.RETROFIT_CREATE_FUN,
+                            generic
+                        )
                         .unindent()
                         .add("} as %T\n", generic)
                         .build()
@@ -255,25 +305,38 @@ class BaseFilesGenerator(
         addType(tApiHolder)
     }
 
-    private fun getAuthInterceptorFile() = prepareFileSpec(options.packageName, "ApiAuthInterceptor") {
-        val cnInterceptor = ClassName(options.packageName, "ApiAuthInterceptor")
-        val cnAuthInfo = cnInterceptor.nestedClass("AuthInfo")
-        val cnAuthPosition = cnInterceptor.nestedClass("AuthPosition")
+    private fun getAuthInterceptorFile() =
+        prepareFileSpec(options.packageName, "ApiAuthInterceptor") {
+            val cnInterceptor = ClassName(options.packageName, "ApiAuthInterceptor")
+            val cnAuthInfo = cnInterceptor.nestedClass("AuthInfo")
+            val cnAuthPosition = cnInterceptor.nestedClass("AuthPosition")
 
-        val mnAuthPositionHeader = MemberName(cnAuthPosition, "Header")
-        val mnAuthPositionQuery = MemberName(cnAuthPosition, "Query")
+            val mnAuthPositionHeader = MemberName(cnAuthPosition, "Header")
+            val mnAuthPositionQuery = MemberName(cnAuthPosition, "Query")
 
-        val tAuthInfo = createAuthInfoClass(cnAuthInfo, cnAuthPosition, mnAuthPositionHeader, mnAuthPositionQuery)
-        val tAuthPosition = poetEnum(cnAuthPosition) {
-            addModifiers(KModifier.PRIVATE)
+            val tAuthInfo = createAuthInfoClass(
+                cnAuthInfo,
+                cnAuthPosition,
+                mnAuthPositionHeader,
+                mnAuthPositionQuery
+            )
+            val tAuthPosition = poetEnum(cnAuthPosition) {
+                addModifiers(KModifier.PRIVATE)
 
-            addEnumConstant(mnAuthPositionHeader.simpleName)
-            addEnumConstant(mnAuthPositionQuery.simpleName)
+                addEnumConstant(mnAuthPositionHeader.simpleName)
+                addEnumConstant(mnAuthPositionQuery.simpleName)
+            }
+            val tInterceptor = createInterceptorClass(
+                cnInterceptor,
+                cnAuthInfo,
+                mnAuthPositionHeader,
+                mnAuthPositionQuery,
+                tAuthInfo,
+                tAuthPosition
+            )
+
+            addType(tInterceptor)
         }
-        val tInterceptor = createInterceptorClass(cnInterceptor, cnAuthInfo, mnAuthPositionHeader, mnAuthPositionQuery, tAuthInfo, tAuthPosition)
-
-        addType(tInterceptor)
-    }
 
     private fun createInterceptorClass(
         cnInterceptor: ClassName,
@@ -287,7 +350,11 @@ class BaseFilesGenerator(
 
         val mnAuthMap = MemberName(cnInterceptor, "authMap")
 
-        val pAuthMap = poetProperty(mnAuthMap.simpleName, MUTABLE_MAP.parameterizedBy(STRING, cnAuthInfo), KModifier.PRIVATE) {
+        val pAuthMap = poetProperty(
+            mnAuthMap.simpleName,
+            MUTABLE_MAP.parameterizedBy(STRING, cnAuthInfo),
+            KModifier.PRIVATE
+        ) {
             initializer("%M()", PoetConstants.MUTABLE_MAP_OF)
         }
         val fClearAll = poetFunSpec("clearAllAuth") {
@@ -414,7 +481,12 @@ class BaseFilesGenerator(
         addFunction(fQuery)
     }.build()
 
-    private fun createSecurityFuns(cnAuthInfo: ClassName, mnAuthMap: MemberName, name: String, scheme: SecurityScheme): List<FunSpec> {
+    private fun createSecurityFuns(
+        cnAuthInfo: ClassName,
+        mnAuthMap: MemberName,
+        name: String,
+        scheme: SecurityScheme
+    ): List<FunSpec> {
         val fnSet = "set $name".asFunctionName()
         val fnClear = "clear $name".asFunctionName()
 
@@ -423,24 +495,52 @@ class BaseFilesGenerator(
                 SecurityType.Basic -> {
                     addParameter("username", STRING)
                     addParameter("password", STRING)
-                    addStatement("%N[%S] = %T.basic(username, password)", mnAuthMap, name, cnAuthInfo)
+                    addStatement(
+                        "%N[%S] = %T.basic(username, password)",
+                        mnAuthMap,
+                        name,
+                        cnAuthInfo
+                    )
                 }
+
                 SecurityType.Bearer -> {
                     addParameter("token", STRING)
                     addStatement("%N[%S] = %T.bearer(token)", mnAuthMap, name, cnAuthInfo)
                 }
+
                 SecurityType.Header -> {
                     addParameter("apiKey", STRING)
-                    addStatement("%N[%S] = %T.header(%S, apiKey)", mnAuthMap, name, cnAuthInfo, scheme.name)
+                    addStatement(
+                        "%N[%S] = %T.header(%S, apiKey)",
+                        mnAuthMap,
+                        name,
+                        cnAuthInfo,
+                        scheme.name
+                    )
                 }
+
                 SecurityType.Query -> {
                     addParameter("apiKey", STRING)
-                    addStatement("%N[%S] = %T.query(%S, apiKey)", mnAuthMap, name, cnAuthInfo, scheme.name)
+                    addStatement(
+                        "%N[%S] = %T.query(%S, apiKey)",
+                        mnAuthMap,
+                        name,
+                        cnAuthInfo,
+                        scheme.name
+                    )
                 }
-                SecurityType.OAuth-> {
+
+                SecurityType.OAuth -> {
                     addParameter("oauth", STRING)
-                    addStatement("%N[%S] = %T.header(%S, oauth)", mnAuthMap, name, cnAuthInfo, "Authorization")
+                    addStatement(
+                        "%N[%S] = %T.header(%S, oauth)",
+                        mnAuthMap,
+                        name,
+                        cnAuthInfo,
+                        "Authorization"
+                    )
                 }
+
                 SecurityType.Unknown -> {
                     throw IllegalStateException("SecurityScheme not supported: $scheme")
                 }
@@ -454,28 +554,38 @@ class BaseFilesGenerator(
         return listOf(fSet, fClear)
     }
 
-    private fun getEnumConverterFile() = prepareFileSpec(options.packageName, "EnumConverterFactory") {
-        val name = ClassName(options.packageName, "EnumConverterFactory")
-        val fnStringConverter = MemberName(name, "stringConverter")
-        val fnCreateEnumConverter = MemberName(name, "createEnumConverter")
+    private fun getEnumConverterFile() =
+        prepareFileSpec(options.packageName, "EnumConverterFactory") {
+            val name = ClassName(options.packageName, "EnumConverterFactory")
+            val fnStringConverter = MemberName(name, "stringConverter")
+            val fnCreateEnumConverter = MemberName(name, "createEnumConverter")
 
-        val cStar = Class::class.asClassName().parameterizedBy(STAR)
+            val cStar = Class::class.asClassName().parameterizedBy(STAR)
 
-        val enumConverterFactory = poetObject(name) {
-            superclass(PoetConstants.CONVERTER_FACTORY)
+            val enumConverterFactory = poetObject(name) {
+                superclass(PoetConstants.CONVERTER_FACTORY)
 
-            val stringConverterFun = poetFunSpec(fnStringConverter.simpleName) {
-                addModifiers(KModifier.OVERRIDE)
-                addParameter("type", Type::class)
-                addParameter("annotations", ARRAY.parameterizedBy(ANNOTATION))
-                addParameter("retrofit", PoetConstants.RETROFIT)
-                addStatement("return if (type is %T && type.isEnum) %N() else null", cStar, fnCreateEnumConverter)
-            }
-            val createEnumConverterFun = poetFunSpec(fnCreateEnumConverter.simpleName) {
-                addModifiers(KModifier.PRIVATE)
-                returns(PoetConstants.CONVERTER.parameterizedBy(ENUM.parameterizedBy(STAR), STRING))
-                addStatement(
-                    """
+                val stringConverterFun = poetFunSpec(fnStringConverter.simpleName) {
+                    addModifiers(KModifier.OVERRIDE)
+                    addParameter("type", Type::class)
+                    addParameter("annotations", ARRAY.parameterizedBy(ANNOTATION))
+                    addParameter("retrofit", PoetConstants.RETROFIT)
+                    addStatement(
+                        "return if (type is %T && type.isEnum) %N() else null",
+                        cStar,
+                        fnCreateEnumConverter
+                    )
+                }
+                val createEnumConverterFun = poetFunSpec(fnCreateEnumConverter.simpleName) {
+                    addModifiers(KModifier.PRIVATE)
+                    returns(
+                        PoetConstants.CONVERTER.parameterizedBy(
+                            ENUM.parameterizedBy(STAR),
+                            STRING
+                        )
+                    )
+                    addStatement(
+                        """
                     return %T { enum ->
                         try {
                             enum.javaClass.getField(enum.name).getAnnotation(%T::class.java)?.name
@@ -483,16 +593,16 @@ class BaseFilesGenerator(
                             null
                         } ?: enum.toString()
                     }""".trimIndent(),
-                    PoetConstants.CONVERTER,
-                    PoetConstants.MOSHI_JSON,
-                    PoetConstants.EXCEPTION
-                )
-            }
+                        PoetConstants.CONVERTER,
+                        PoetConstants.MOSHI_JSON,
+                        PoetConstants.EXCEPTION
+                    )
+                }
 
-            addFunction(stringConverterFun)
-            addFunction(createEnumConverterFun)
+                addFunction(stringConverterFun)
+                addFunction(createEnumConverterFun)
+            }
+            addType(enumConverterFactory)
         }
-        addType(enumConverterFactory)
-    }
 
 }

@@ -47,6 +47,10 @@ open class KgenTask : DefaultTask() {
     @Optional
     val allowParseErrors = project.objects.property<Boolean>()
 
+    @Input
+    @Optional
+    val apiSyntaxType = project.objects.property<String>()
+
     fun setProperties(extension: KgenExtension, outputFolder: File) {
         specFile.set(extension.specFile)
         specUri.set(extension.specUri)

@@ -7,7 +7,13 @@ import io.swagger.v3.oas.models.OpenAPI
 class PoetGenerator(
     openAPI: OpenAPI,
     options: OptionSet,
-    analyzer: OpenAPIAnalyzer
-) : IBaseFilesGenerator by BaseFilesGenerator(openAPI, options, analyzer),
+    analyzer: OpenAPIAnalyzer,
+    isObservableApiSyntaxType: Boolean
+) : IBaseFilesGenerator by BaseFilesGenerator(
+    openAPI,
+    options,
+    analyzer,
+    isObservableApiSyntaxType
+),
     IModelFilesGenerator by ModelFilesGenerator(openAPI, options, analyzer),
-    IApiFilesGenerator by ApiFilesGenerator(openAPI, options, analyzer)
+    IApiFilesGenerator by ApiFilesGenerator(openAPI, options, analyzer, isObservableApiSyntaxType)
