@@ -39,6 +39,7 @@ object PoetConstants {
     val RETROFIT_PARAM_QUERY = ClassName(PKG_RETROFIT_HTTP, "Query")
 
     val RETROFIT_RESPONSE = ClassName(PKG_RETROFIT, "Response")
+    val RETROFIT_CALL = ClassName(PKG_RETROFIT, "Call")
 
     val RETROFIT = ClassName(PKG_RETROFIT, "Retrofit")
     val RETROFIT_BUILDER = ClassName(PKG_RETROFIT, "Retrofit", "Builder")

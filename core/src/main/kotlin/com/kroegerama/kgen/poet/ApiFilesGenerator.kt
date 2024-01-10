@@ -325,7 +325,6 @@ class ApiFilesGenerator(
 
             schemaWithMime?.let { (mime, _, schema) ->
                 val typeName = analyzer.findTypeNameFor(schema)
-//                val responseType = PoetConstants.RETROFIT_RESPONSE.parameterizedBy(typeName)
                 val observableType = Observable::class.java.asClassName().parameterizedBy(typeName)
 
                 if (mime == Constants.MIME_TYPE_JSON) {
@@ -333,7 +332,10 @@ class ApiFilesGenerator(
                 } else {
                     returns(PoetConstants.OK_RESPONSE_BODY, descriptionBlock)
                 }
-            } ?: returns(PoetConstants.RETROFIT_RESPONSE.parameterizedBy(UNIT), descriptionBlock)
+            } ?: returns(
+                PoetConstants.RETROFIT_CALL.parameterizedBy(PoetConstants.OK_RESPONSE_BODY),
+                descriptionBlock
+            )
         }
     }
 }
