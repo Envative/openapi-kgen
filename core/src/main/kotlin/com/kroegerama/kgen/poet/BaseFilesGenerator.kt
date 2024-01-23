@@ -78,7 +78,7 @@ class BaseFilesGenerator(
                     if (index < servers.size - 1) add(", ")
                 }
             }.build()
-
+            mutable()
             initializer("%M(%L)", PoetConstants.LIST_OF, block)
         }
 
