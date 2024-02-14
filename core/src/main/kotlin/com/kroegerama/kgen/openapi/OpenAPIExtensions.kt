@@ -45,7 +45,7 @@ fun Schema<*>.mapToTypeName(): ClassName = when (this) {
     is PasswordSchema -> STRING
     is UUIDSchema -> STRING
 
-    is DateSchema -> PoetConstants.DATE
+    is DateSchema -> STRING
     is DateTimeSchema -> PoetConstants.DATE
 
     else -> {
