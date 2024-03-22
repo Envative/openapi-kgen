@@ -246,7 +246,7 @@ class OpenAPIAnalyzer(
                 findTypeNameFor(refType)
             }
 
-            SchemaType.Object,
+            SchemaType.Object -> ANY
             SchemaType.OneOf,
             SchemaType.AnyOf -> throw IllegalStateException()
         }
