@@ -27,10 +27,11 @@ class ApiFilesGenerator(
     openAPI: OpenAPI,
     options: OptionSet,
     analyzer: OpenAPIAnalyzer,
-    private val isObservableApiSyntaxType: Boolean = false
+    private val isObservableApiSyntaxType: Boolean = false,
+    private val useCompanionObjects: Boolean = false
 ) : IApiFilesGenerator,
     IPoetGeneratorBase by PoetGeneratorBase(openAPI, options, analyzer),
-    IPoetGeneratorSchemaHandler by PoetGeneratorSchemaHandler(openAPI, options, analyzer) {
+    IPoetGeneratorSchemaHandler by PoetGeneratorSchemaHandler(openAPI, options, analyzer, useCompanionObjects) {
 
     override fun getApiFiles(): List<FileSpec> = analyzer.apis.map { (name, operations) ->
         val apiName = "$name api"

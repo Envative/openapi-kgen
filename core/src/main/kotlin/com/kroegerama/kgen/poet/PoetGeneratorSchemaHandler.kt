@@ -18,14 +18,22 @@ interface IPoetGeneratorSchemaHandler {
     fun MapSchema.createMapTypeAlias(name: String): TypeAliasSpec
     fun Schema<*>.asEnumSpec(className: ClassName): TypeSpec
     fun Schema<*>.asTypeSpec(className: ClassName, block: TypeSpec.Builder.() -> Unit): TypeSpec
-    fun Schema<*>.asSealedTypeSpec(className: ClassName, block: TypeSpec.Builder.() -> Unit): TypeSpec
-    fun Schema<*>.convertToParameters(required: Boolean, isMultipart: Boolean): List<ParameterSpecPairInfo>
+    fun Schema<*>.asSealedTypeSpec(
+        className: ClassName,
+        block: TypeSpec.Builder.() -> Unit
+    ): TypeSpec
+
+    fun Schema<*>.convertToParameters(
+        required: Boolean,
+        isMultipart: Boolean
+    ): List<ParameterSpecPairInfo>
 }
 
 class PoetGeneratorSchemaHandler(
     openAPI: OpenAPI,
     options: OptionSet,
-    analyzer: OpenAPIAnalyzer
+    analyzer: OpenAPIAnalyzer,
+    private val useCompanionObjects: Boolean
 ) : IPoetGeneratorSchemaHandler,
     IPoetGeneratorBase by PoetGeneratorBase(openAPI, options, analyzer) {
 
@@ -66,7 +74,7 @@ class PoetGeneratorSchemaHandler(
         val valueType = valueSchema?.let {
             try {
                 analyzer.findTypeNameFor(valueSchema)
-            } catch(e: Exception) {
+            } catch (e: Exception) {
                 e.printStackTrace()
                 ANY
             }
@@ -87,9 +95,14 @@ class PoetGeneratorSchemaHandler(
                 description?.let { addKdoc(it) }
             })
         }
+
+        if (useCompanionObjects) addType(TypeSpec.companionObjectBuilder().build())
     }
 
-    override fun Schema<*>.asSealedTypeSpec(className: ClassName, block: TypeSpec.Builder.() -> Unit) = poetClass(className) {
+    override fun Schema<*>.asSealedTypeSpec(
+        className: ClassName,
+        block: TypeSpec.Builder.() -> Unit
+    ) = poetClass(className) {
         addModifiers(KModifier.SEALED)
         description?.let { addKdoc("%L\n", it) }
 
@@ -98,46 +111,52 @@ class PoetGeneratorSchemaHandler(
         addAnnotation(createJsonClassAnnotation(discriminator))
     }
 
-    override fun Schema<*>.asTypeSpec(className: ClassName, block: TypeSpec.Builder.() -> Unit) = poetClass(className) {
-        description?.let { addKdoc("%L\n", it) }
+    override fun Schema<*>.asTypeSpec(className: ClassName, block: TypeSpec.Builder.() -> Unit) =
+        poetClass(className) {
+            description?.let { addKdoc("%L\n", it) }
 
-        val allProperties = mutableMapOf<String, Schema<*>>()
-        properties?.let(allProperties::putAll)
+            val allProperties = mutableMapOf<String, Schema<*>>()
+            properties?.let(allProperties::putAll)
 
-        if (this@asTypeSpec is ComposedSchema) {
-            //allOf is handled by properties, because
-            //isFlattenComposedSchemas == true
+            if (this@asTypeSpec is ComposedSchema) {
+                //allOf is handled by properties, because
+                //isFlattenComposedSchemas == true
 
-            //TODO: Better handling of anyOf/oneOf -> e.g. use discriminator
-            anyOf?.mapNotNull(Schema<*>::getProperties)?.forEach(allProperties::putAll)
+                //TODO: Better handling of anyOf/oneOf -> e.g. use discriminator
+                anyOf?.mapNotNull(Schema<*>::getProperties)?.forEach(allProperties::putAll)
 //            oneOf?.mapNotNull(Schema<*>::getProperties)?.forEach(allProperties::putAll)
-        }
-
-        val propSpecs = allProperties.map { (propertyName, propertySchema) ->
-            val fieldName = propertyName.asFieldName()
-            val isNullable = isNullable(required.orEmpty().contains(propertyName), propertySchema.nullable)
-            val fieldType = analyzer.findTypeNameFor(propertySchema).nullable(isNullable)
-
-            propertySchema.description?.let {
-                addKdoc("@param %L %L\n", fieldName, it)
             }
 
-            val isMutable = propertySchema.extensions.orEmpty()["x-kgen-variable"] as? Boolean == true
-            poetProperty(fieldName, fieldType) {
-                mutable(isMutable)
-                addAnnotation(createJsonAnnotation(propertyName))
+            val propSpecs = allProperties.map { (propertyName, propertySchema) ->
+                val fieldName = propertyName.asFieldName()
+                val isNullable =
+                    isNullable(required.orEmpty().contains(propertyName), propertySchema.nullable)
+                val fieldType = analyzer.findTypeNameFor(propertySchema).nullable(isNullable)
+
+                propertySchema.description?.let {
+                    addKdoc("@param %L %L\n", fieldName, it)
+                }
+
+                val isMutable =
+                    propertySchema.extensions.orEmpty()["x-kgen-variable"] as? Boolean == true
+                poetProperty(fieldName, fieldType) {
+                    mutable(isMutable)
+                    addAnnotation(createJsonAnnotation(propertyName))
+                }
+            }
+            primaryConstructor(*propSpecs.toTypedArray())
+            apply(block)
+            addAnnotation(createJsonClassAnnotation())
+
+            if (propSpecs.isNotEmpty()) {
+                addModifiers(KModifier.DATA)
             }
         }
-        primaryConstructor(*propSpecs.toTypedArray())
-        apply(block)
-        addAnnotation(createJsonClassAnnotation())
 
-        if (propSpecs.isNotEmpty()) {
-            addModifiers(KModifier.DATA)
-        }
-    }
-
-    override fun Schema<*>.convertToParameters(required: Boolean, isMultipart: Boolean): List<ParameterSpecPairInfo> {
+    override fun Schema<*>.convertToParameters(
+        required: Boolean,
+        isMultipart: Boolean
+    ): List<ParameterSpecPairInfo> {
         val type = getSchemaType()
         if (type != SchemaType.Object) throw IllegalStateException("Multipart and URL encoded are only supported with Object as Content Type")
 
@@ -152,7 +171,10 @@ class PoetGeneratorSchemaHandler(
 
             val ifaceParam = poetParameter(propertyName.asFieldName(), typeName) {
                 val annotationValue = if (propertySchema is BinarySchema) null else propertyName
-                val annotation = if (isMultipart) createPartAnnotation(annotationValue) else createFieldAnnotation(propertyName)
+                val annotation =
+                    if (isMultipart) createPartAnnotation(annotationValue) else createFieldAnnotation(
+                        propertyName
+                    )
                 addAnnotation(annotation)
             }
             val delegateParam = poetParameter(propertyName.asFieldName(), typeName) {

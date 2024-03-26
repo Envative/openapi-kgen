@@ -8,12 +8,19 @@ class PoetGenerator(
     openAPI: OpenAPI,
     options: OptionSet,
     analyzer: OpenAPIAnalyzer,
-    isObservableApiSyntaxType: Boolean
+    isObservableApiSyntaxType: Boolean,
+    useCompanionObjects: Boolean
 ) : IBaseFilesGenerator by BaseFilesGenerator(
     openAPI,
     options,
     analyzer,
     isObservableApiSyntaxType
 ),
-    IModelFilesGenerator by ModelFilesGenerator(openAPI, options, analyzer),
-    IApiFilesGenerator by ApiFilesGenerator(openAPI, options, analyzer, isObservableApiSyntaxType)
+    IModelFilesGenerator by ModelFilesGenerator(openAPI, options, analyzer, useCompanionObjects),
+    IApiFilesGenerator by ApiFilesGenerator(
+        openAPI,
+        options,
+        analyzer,
+        isObservableApiSyntaxType,
+        useCompanionObjects
+    )

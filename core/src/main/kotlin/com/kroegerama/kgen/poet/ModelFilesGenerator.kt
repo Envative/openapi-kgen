@@ -18,9 +18,10 @@ interface IModelFilesGenerator {
 class ModelFilesGenerator(
     openAPI: OpenAPI,
     options: OptionSet,
-    analyzer: OpenAPIAnalyzer
+    analyzer: OpenAPIAnalyzer,
+    private val useCompanionObjects: Boolean
 ) : IModelFilesGenerator,
-    IPoetGeneratorSchemaHandler by PoetGeneratorSchemaHandler(openAPI, options, analyzer),
+    IPoetGeneratorSchemaHandler by PoetGeneratorSchemaHandler(openAPI, options, analyzer, useCompanionObjects),
     IPoetGeneratorBase by PoetGeneratorBase(openAPI, options, analyzer) {
 
     override fun getModelFiles() =
@@ -55,37 +56,42 @@ class ModelFilesGenerator(
         }
     }
 
-    private fun getUnnamedObjectFiles(): List<FileSpec> = analyzer.objectTree.unknown.map { schemaInfo ->
-        val name = schemaInfo.name
-        val schema = schemaInfo.schema
+    private fun getUnnamedObjectFiles(): List<FileSpec> =
+        analyzer.objectTree.unknown.map { schemaInfo ->
+            val name = schemaInfo.name
+            val schema = schemaInfo.schema
 
-        prepareFileSpec(options.modelPackage, name.asClassFileName()) {
-            val className = ClassName(options.modelPackage, name.asTypeName())
-            val type = schema.asTypeSpec(className) {}
-            addType(type)
-        }
-    }
-
-    private fun getObjectFiles(): List<FileSpec> = analyzer.objectTree.nodes.map { (schemaInfo, children) ->
-        val name = schemaInfo.name
-        val schema = schemaInfo.schema
-
-        prepareFileSpec(options.modelPackage, name.asClassFileName()) {
-            val className = ClassName(options.modelPackage, name.asTypeName())
-
-            val rootType = if (schemaInfo.schemaType == SchemaType.OneOf) {
-                schema.asSealedTypeSpec(className) {
-                    addChildren(className, children)
-                }
-            } else {
-                schema.asTypeSpec(className) {
-                    addChildren(className, children)
-                }
+            prepareFileSpec(options.modelPackage, name.asClassFileName()) {
+                val className = ClassName(options.modelPackage, name.asTypeName())
+                val type = schema.asTypeSpec(className) {}
+                addType(type)
             }
-
-            addType(rootType)
         }
-    }
+
+    private fun getObjectFiles(): List<FileSpec> =
+        analyzer.objectTree.nodes.map { (schemaInfo, children) ->
+            val name = schemaInfo.name
+            val schema = schemaInfo.schema
+
+            prepareFileSpec(options.modelPackage, name.asClassFileName()) {
+                val className = ClassName(options.modelPackage, name.asTypeName())
+
+                val rootType = if (schemaInfo.schemaType == SchemaType.OneOf) {
+                    schema.asSealedTypeSpec(className) {
+                        addChildren(className, children)
+
+                        if (useCompanionObjects) addType(TypeSpec.companionObjectBuilder().build())
+                    }
+                } else {
+                    schema.asTypeSpec(className) {
+                        addChildren(className, children)
+
+                        if (useCompanionObjects) addType(TypeSpec.companionObjectBuilder().build())
+                    }
+                }
+                addType(rootType)
+            }
+        }
 
     private fun TypeSpec.Builder.addChildren(
         parentCn: ClassName,
@@ -110,6 +116,7 @@ class ModelFilesGenerator(
 
                     addChildren(className, children)
                 }
+
                 SchemaType.Enum -> schema.asEnumSpec(className)
                 else -> throw IllegalStateException("Type $type not allowed in ModelTree")
             }
@@ -117,15 +124,16 @@ class ModelFilesGenerator(
         }
     }
 
-    private fun getNamedPrimitives(): List<Pair<TypeSpec, FunSpec>> = mutableListOf<Pair<TypeSpec, FunSpec>>().apply {
-        if (options.useInlineClass) {
-            analyzer.namedPrimitives.forEach { schemaInfo ->
-                val schema = schemaInfo.schema
-                val name = ClassName(options.modelPackage, schemaInfo.name.asTypeName())
-                add(schema.createNamedPrimitive(name))
+    private fun getNamedPrimitives(): List<Pair<TypeSpec, FunSpec>> =
+        mutableListOf<Pair<TypeSpec, FunSpec>>().apply {
+            if (options.useInlineClass) {
+                analyzer.namedPrimitives.forEach { schemaInfo ->
+                    val schema = schemaInfo.schema
+                    val name = ClassName(options.modelPackage, schemaInfo.name.asTypeName())
+                    add(schema.createNamedPrimitive(name))
+                }
             }
         }
-    }
 
     private fun getTypeAliases(): List<TypeAliasSpec> = mutableListOf<TypeAliasSpec>().apply {
         with(analyzer) {
@@ -150,7 +158,6 @@ class ModelFilesGenerator(
     }
 
     private fun getEnums(): List<TypeSpec> = mutableListOf<TypeSpec>().apply {
-//        with(analyzer.newEnums) {
         with(analyzer.enums) {
             forEach { schemaInfo ->
                 val schema = schemaInfo.schema

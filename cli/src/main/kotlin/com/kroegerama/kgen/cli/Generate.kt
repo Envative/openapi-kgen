@@ -71,6 +71,13 @@ class Generate : Runnable {
     )
     private val apiMethodSyntaxType = ""
 
+    @Option(
+        name = ["--use-companion-objects"],
+        title = ["Generate Classes and Enums with Companion objects"],
+        description = "Whether or not to generate all classes and enums with Companion objects"
+    )
+    private val useCompanionObjects = false
+
     override fun run() {
         val options = OptionSet(
             specFile = specFile,
@@ -98,7 +105,7 @@ class Generate : Runnable {
 
         if (options.verbose) println("Generating...")
         val analyzer = OpenAPIAnalyzer(openAPI, options)
-        val poetGenerator = PoetGenerator(openAPI, options, analyzer, isObservableApiSyntaxType)
+        val poetGenerator = PoetGenerator(openAPI, options, analyzer, isObservableApiSyntaxType, useCompanionObjects)
         val fileHelper = FileHelper(options)
         val generator = Generator(options, poetGenerator, fileHelper, analyzer)
 

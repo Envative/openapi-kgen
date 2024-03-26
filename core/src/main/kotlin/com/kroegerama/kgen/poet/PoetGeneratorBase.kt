@@ -37,7 +37,11 @@ class PoetGeneratorBase(
         return this
     }
 
-    override fun prepareFileSpec(pkg: String, name: String, block: FileSpec.Builder.() -> Unit): FileSpec =
+    override fun prepareFileSpec(
+        pkg: String,
+        name: String,
+        block: FileSpec.Builder.() -> Unit
+    ): FileSpec =
         poetFile(pkg, name) {
             indent(" ".repeat(4))
             addHeader()
