@@ -24,12 +24,26 @@ data class OperationWithInfo(
         val requestContent = operation.requestBody?.content
         if (requestContent != null && requestContent["application/json"] != null) {
             val model = requestContent["application/json"]
-            val refTypeName = model?.schema?.allOf?.firstOrNull()?.getRefTypeName()
-            if (refTypeName != null) {
-                set.add(refTypeName)
 
-                val subModelNames = getSubModelNames(refTypeName, components)
-                if (subModelNames.isNotEmpty()) set.addAll(subModelNames)
+            if (!model?.schema?.allOf.isNullOrEmpty()) {
+                val refTypeName = model?.schema?.allOf?.firstOrNull()?.getRefTypeName()
+                if (refTypeName != null) {
+                    set.add(refTypeName)
+
+                    val subModelNames = getSubModelNames(refTypeName, components)
+                    if (subModelNames.isNotEmpty()) set.addAll(subModelNames)
+                }
+            }
+        }
+
+        operation.parameters?.forEach {
+            if (it.schema.type == "array") {
+                it.schema.items.getRefTypeName()?.let { arrayTypeModelName ->
+                    set.add(arrayTypeModelName)
+
+                    if (modelHasSubModels(arrayTypeModelName, components))
+                        set.addAll(getSubModelNames(arrayTypeModelName, components))
+                }
             }
         }
 
