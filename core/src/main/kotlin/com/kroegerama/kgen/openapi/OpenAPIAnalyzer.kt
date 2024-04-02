@@ -111,9 +111,10 @@ class OpenAPIAnalyzer(
                 when (schemaInfo.schemaType) {
                     SchemaType.Array -> namedArrays.add(schemaInfo)
                     SchemaType.Map -> {
-                        if(schemaInfo.schema.type == "object") rootSchemas.add(schemaInfo)
+                        if (schemaInfo.schema.type == "object") rootSchemas.add(schemaInfo)
                         else namedMaps.add(schemaInfo)
                     }
+
                     SchemaType.Primitive -> namedPrimitives.add(schemaInfo)
                     SchemaType.Enum -> enums.add(schemaInfo)
                     SchemaType.Object -> rootSchemas.add(schemaInfo)
@@ -275,16 +276,30 @@ class OpenAPIAnalyzer(
 //            )
 //        }
 
-        this.components.schemas.forEach {
-            visited.add(
-                SchemaWithInfo(
-                    schema = it.value,
-                    rawName = it.key,
-                    schemaType = it.value.getSchemaType(),
-                    path = listOf("")
-                )
-            )
+        // build list of acceptable models to filter out when using limitApis
+        val limitModelNames = mutableSetOf<String>()
+        val operations = openAPI.getAllOperations(options.limitApis)
+        operations.forEach { operationInfo ->
+            val topLevelModelNames = operationInfo.getModelNameList(this.components)
+            limitModelNames.addAll(topLevelModelNames)
         }
+
+        println("Limit Models: ${limitModelNames.joinToString(", ")}")
+
+        this.components.schemas
+            .filter {
+                limitModelNames.contains(it.key)
+            }
+            .forEach {
+                visited.add(
+                    SchemaWithInfo(
+                        schema = it.value,
+                        rawName = it.key,
+                        schemaType = it.value.getSchemaType(),
+                        path = listOf("")
+                    )
+                )
+            }
 
         return visited
     }

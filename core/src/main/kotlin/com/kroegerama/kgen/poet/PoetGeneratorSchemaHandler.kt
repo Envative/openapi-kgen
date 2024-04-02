@@ -33,7 +33,8 @@ class PoetGeneratorSchemaHandler(
     openAPI: OpenAPI,
     options: OptionSet,
     analyzer: OpenAPIAnalyzer,
-    private val useCompanionObjects: Boolean
+    private val useCompanionObjects: Boolean,
+    private val useApiSpecEnumNames: Boolean
 ) : IPoetGeneratorSchemaHandler,
     IPoetGeneratorBase by PoetGeneratorBase(openAPI, options, analyzer) {
 
@@ -88,7 +89,8 @@ class PoetGeneratorSchemaHandler(
 
     override fun Schema<*>.asEnumSpec(className: ClassName) = poetEnum(className) {
         enum.orEmpty().forEach { value ->
-            val valueName = value.toString().asConstantName()
+            val valueName = if (useApiSpecEnumNames) value.toString()
+            else value.toString().asConstantName()
 
             addEnumConstant(valueName, poetAnonymousClass {
                 addAnnotation(createJsonAnnotation(value.toString()))

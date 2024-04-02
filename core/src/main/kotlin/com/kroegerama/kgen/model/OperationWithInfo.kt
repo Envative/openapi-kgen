@@ -1,8 +1,12 @@
 package com.kroegerama.kgen.model
 
 import com.kroegerama.kgen.Constants
+import com.kroegerama.kgen.openapi.getRefTypeName
+import com.kroegerama.kgen.openapi.getSchemaType
+import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.Operation
 import io.swagger.v3.oas.models.PathItem
+import io.swagger.v3.oas.models.media.ComposedSchema
 
 data class OperationWithInfo(
     val path: String,
@@ -13,6 +17,84 @@ data class OperationWithInfo(
 ) {
     fun createOperationName() =
         operation.operationId ?: "${method.name.toLowerCase()}${path.capitalize()}"
+
+    fun getModelNameList(components: Components): Set<String> {
+        val set = mutableSetOf<String>()
+
+        val requestContent = operation.requestBody?.content
+        if (requestContent != null && requestContent["application/json"] != null) {
+            val model = requestContent["application/json"]
+            val refTypeName = model?.schema?.getRefTypeName()
+            if (refTypeName != null) {
+                set.add(refTypeName)
+
+                val subModelNames = getSubModelNames(refTypeName, components)
+                if (subModelNames.isNotEmpty()) set.addAll(subModelNames)
+            }
+        }
+
+        operation.responses?.entries?.forEach {
+            val resContent = it.value.content
+            if (resContent != null && resContent["application/json"] != null) {
+                val model = resContent["application/json"]
+                val refTypeName = model?.schema?.getRefTypeName()
+                if (refTypeName != null) {
+                    set.add(refTypeName)
+
+                    val subModelNames = getSubModelNames(refTypeName, components)
+                    if (subModelNames.isNotEmpty()) set.addAll(subModelNames)
+                }
+            }
+        }
+        return set
+    }
+
+    private fun getSubModelNames(refTypeName: String, components: Components): Set<String> {
+        val set = mutableSetOf<String>()
+
+        // Navigate recursively through model for submodels
+        val modelSchema = components.schemas[refTypeName]
+        modelSchema?.properties?.forEach {
+            if (it.value.type == "array") {
+                it.value.items.getRefTypeName()?.let { arrayTypeModelName ->
+                    set.add(arrayTypeModelName)
+
+                    if (modelHasSubModels(arrayTypeModelName, components))
+                        set.addAll(getSubModelNames(arrayTypeModelName, components))
+                }
+            }
+
+            if (it.value is ComposedSchema) {
+                it.value.allOf.firstOrNull()?.getRefTypeName()?.let { modelName ->
+                    set.add(modelName)
+
+                    if (modelHasSubModels(modelName, components))
+                        set.addAll(getSubModelNames(modelName, components))
+                }
+            }
+        }
+
+        return set
+    }
+
+    private fun modelHasSubModels(refTypeName: String, components: Components): Boolean {
+        val modelSchema = components.schemas[refTypeName]
+        modelSchema?.properties?.forEach {
+            if (it.value.type == "array") {
+                it.value.items.getRefTypeName()?.let {
+                    return true
+                }
+            }
+
+            if (it.value is ComposedSchema) {
+                it.value.allOf.firstOrNull()?.getRefTypeName()?.let {
+                    return true
+                }
+            }
+        }
+
+        return false
+    }
 
     fun getRequest(): SchemaWithMime? {
         val requestBody = operation.requestBody ?: return null

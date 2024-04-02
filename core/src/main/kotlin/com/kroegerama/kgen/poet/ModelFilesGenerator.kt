@@ -19,9 +19,10 @@ class ModelFilesGenerator(
     openAPI: OpenAPI,
     options: OptionSet,
     analyzer: OpenAPIAnalyzer,
-    private val useCompanionObjects: Boolean
+    private val useCompanionObjects: Boolean,
+    private val useApiSpecEnumNames: Boolean
 ) : IModelFilesGenerator,
-    IPoetGeneratorSchemaHandler by PoetGeneratorSchemaHandler(openAPI, options, analyzer, useCompanionObjects),
+    IPoetGeneratorSchemaHandler by PoetGeneratorSchemaHandler(openAPI, options, analyzer, useCompanionObjects, useApiSpecEnumNames),
     IPoetGeneratorBase by PoetGeneratorBase(openAPI, options, analyzer) {
 
     override fun getModelFiles() =

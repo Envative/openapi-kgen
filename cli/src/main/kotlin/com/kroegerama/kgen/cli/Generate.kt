@@ -78,6 +78,13 @@ class Generate : Runnable {
     )
     private val useCompanionObjects = false
 
+    @Option(
+        name = ["--use-api-spec-enum-names"],
+        title = ["Generate Enums using property names from openapi spec"],
+        description = "Whether or not to generate Enum property names from openapi spec or using Constant format. ie: SomeEnumValue vs SOME_ENUM_VALUE"
+    )
+    private val useApiSpecEnumNames = false
+
     override fun run() {
         val options = OptionSet(
             specFile = specFile,
@@ -105,7 +112,7 @@ class Generate : Runnable {
 
         if (options.verbose) println("Generating...")
         val analyzer = OpenAPIAnalyzer(openAPI, options)
-        val poetGenerator = PoetGenerator(openAPI, options, analyzer, isObservableApiSyntaxType, useCompanionObjects)
+        val poetGenerator = PoetGenerator(openAPI, options, analyzer, isObservableApiSyntaxType, useCompanionObjects, useApiSpecEnumNames)
         val fileHelper = FileHelper(options)
         val generator = Generator(options, poetGenerator, fileHelper, analyzer)
 
