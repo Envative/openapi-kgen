@@ -24,7 +24,7 @@ data class OperationWithInfo(
         val requestContent = operation.requestBody?.content
         if (requestContent != null && requestContent["application/json"] != null) {
             val model = requestContent["application/json"]
-            val refTypeName = model?.schema?.getRefTypeName()
+            val refTypeName = model?.schema?.allOf?.firstOrNull()?.getRefTypeName()
             if (refTypeName != null) {
                 set.add(refTypeName)
 
