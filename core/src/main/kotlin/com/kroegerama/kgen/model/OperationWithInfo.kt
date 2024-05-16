@@ -45,6 +45,15 @@ data class OperationWithInfo(
                         set.addAll(getSubModelNames(arrayTypeModelName, components))
                 }
             }
+            if (!it.schema?.allOf.isNullOrEmpty()) {
+                val refTypeName = it.schema?.allOf?.firstOrNull()?.getRefTypeName()
+                if (refTypeName != null) {
+                    set.add(refTypeName)
+
+                    val subModelNames = getSubModelNames(refTypeName, components)
+                    if (subModelNames.isNotEmpty()) set.addAll(subModelNames)
+                }
+            }
         }
 
         operation.responses?.entries?.forEach {
