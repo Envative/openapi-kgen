@@ -6,6 +6,7 @@ import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.Operation
 import io.swagger.v3.oas.models.PathItem
 import io.swagger.v3.oas.models.media.ComposedSchema
+import io.swagger.v3.oas.models.media.Schema
 
 data class OperationWithInfo(
     val path: String,
@@ -112,6 +113,22 @@ data class OperationWithInfo(
                         }
                     }
                 }
+                it.value.getRefTypeName()?.let { modelName ->
+                    set.add(modelName)
+
+                    if (modelHasSubModels(modelName, components)) {
+                        set.addAll(getSubModelNames(modelName, components))
+                    }
+                }
+            }
+            if (it.value is Schema) {
+                it.value.getRefTypeName()?.let { modelName ->
+                    set.add(modelName)
+
+                    if (modelHasSubModels(modelName, components)) {
+                        set.addAll(getSubModelNames(modelName, components))
+                    }
+                }
             }
         }
 
@@ -135,6 +152,11 @@ data class OperationWithInfo(
                     allOfItem.getRefTypeName()?.let {
                         return true
                     }
+                }
+            }
+            if (it.value is Schema) {
+                it.value.getRefTypeName()?.let { modelName ->
+                   return true
                 }
             }
         }
