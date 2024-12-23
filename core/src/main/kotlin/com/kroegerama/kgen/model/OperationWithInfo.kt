@@ -2,7 +2,6 @@ package com.kroegerama.kgen.model
 
 import com.kroegerama.kgen.Constants
 import com.kroegerama.kgen.openapi.getRefTypeName
-import com.kroegerama.kgen.openapi.getSchemaType
 import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.Operation
 import io.swagger.v3.oas.models.PathItem
@@ -13,10 +12,9 @@ data class OperationWithInfo(
     val method: PathItem.HttpMethod,
     val operation: Operation,
     val tags: List<String>,
-    val securityNames: List<String>
+    val securityNames: List<String>,
 ) {
-    fun createOperationName() =
-        operation.operationId ?: "${method.name.toLowerCase()}${path.capitalize()}"
+    fun createOperationName() = operation.operationId ?: "${method.name.toLowerCase()}${path.capitalize()}"
 
     fun getModelNameList(components: Components): Set<String> {
         val set = mutableSetOf<String>()
@@ -26,12 +24,13 @@ data class OperationWithInfo(
             val model = requestContent["application/json"]
 
             if (!model?.schema?.allOf.isNullOrEmpty()) {
-                val refTypeName = model?.schema?.allOf?.firstOrNull()?.getRefTypeName()
-                if (refTypeName != null) {
-                    set.add(refTypeName)
+                model?.schema?.allOf?.firstOrNull()?.let { allOfItem ->
+                    allOfItem.getRefTypeName()?.let { refTypeName ->
+                        set.add(refTypeName)
 
-                    val subModelNames = getSubModelNames(refTypeName, components)
-                    if (subModelNames.isNotEmpty()) set.addAll(subModelNames)
+                        val subModelNames = getSubModelNames(refTypeName, components)
+                        if (subModelNames.isNotEmpty()) set.addAll(subModelNames)
+                    }
                 }
             }
         }
@@ -41,17 +40,21 @@ data class OperationWithInfo(
                 it.schema.items.getRefTypeName()?.let { arrayTypeModelName ->
                     set.add(arrayTypeModelName)
 
-                    if (modelHasSubModels(arrayTypeModelName, components))
+                    if (modelHasSubModels(arrayTypeModelName, components)) {
                         set.addAll(getSubModelNames(arrayTypeModelName, components))
+                    }
                 }
             }
             if (!it.schema?.allOf.isNullOrEmpty()) {
-                val refTypeName = it.schema?.allOf?.firstOrNull()?.getRefTypeName()
-                if (refTypeName != null) {
-                    set.add(refTypeName)
+                it.schema?.allOf?.firstOrNull()?.let { allOfItem ->
+                    allOfItem.getRefTypeName()?.let { refTypeName ->
+                        if (refTypeName != null) {
+                            set.add(refTypeName)
 
-                    val subModelNames = getSubModelNames(refTypeName, components)
-                    if (subModelNames.isNotEmpty()) set.addAll(subModelNames)
+                            val subModelNames = getSubModelNames(refTypeName, components)
+                            if (subModelNames.isNotEmpty()) set.addAll(subModelNames)
+                        }
+                    }
                 }
             }
         }
@@ -72,7 +75,10 @@ data class OperationWithInfo(
         return set
     }
 
-    private fun getSubModelNames(refTypeName: String, components: Components): Set<String> {
+    private fun getSubModelNames(
+        refTypeName: String,
+        components: Components,
+    ): Set<String> {
         val set = mutableSetOf<String>()
 
         // Navigate recursively through model for submodels
@@ -82,17 +88,21 @@ data class OperationWithInfo(
                 it.value.items.getRefTypeName()?.let { arrayTypeModelName ->
                     set.add(arrayTypeModelName)
 
-                    if (modelHasSubModels(arrayTypeModelName, components))
+                    if (modelHasSubModels(arrayTypeModelName, components)) {
                         set.addAll(getSubModelNames(arrayTypeModelName, components))
+                    }
                 }
             }
 
             if (it.value is ComposedSchema) {
-                it.value.allOf.firstOrNull()?.getRefTypeName()?.let { modelName ->
-                    set.add(modelName)
+                it.value.allOf.firstOrNull()?.let { allOfItem ->
+                    allOfItem.getRefTypeName()?.let { modelName ->
+                        set.add(modelName)
 
-                    if (modelHasSubModels(modelName, components))
-                        set.addAll(getSubModelNames(modelName, components))
+                        if (modelHasSubModels(modelName, components)) {
+                            set.addAll(getSubModelNames(modelName, components))
+                        }
+                    }
                 }
             }
         }
@@ -100,7 +110,10 @@ data class OperationWithInfo(
         return set
     }
 
-    private fun modelHasSubModels(refTypeName: String, components: Components): Boolean {
+    private fun modelHasSubModels(
+        refTypeName: String,
+        components: Components,
+    ): Boolean {
         val modelSchema = components.schemas[refTypeName]
         modelSchema?.properties?.forEach {
             if (it.value.type == "array") {
@@ -110,8 +123,10 @@ data class OperationWithInfo(
             }
 
             if (it.value is ComposedSchema) {
-                it.value.allOf.firstOrNull()?.getRefTypeName()?.let {
-                    return true
+                it.value.allOf.firstOrNull()?.let { allOfItem ->
+                    allOfItem.getRefTypeName()?.let {
+                        return true
+                    }
                 }
             }
         }
@@ -125,10 +140,11 @@ data class OperationWithInfo(
 
         val contentTypes = requestBody.content.orEmpty().entries
 
-        //find supported mime, use first one as fallback
-        val (mime, mediaType) = contentTypes.firstOrNull { (mime, _) ->
-            mime in preferredMimes
-        } ?: contentTypes.firstOrNull() ?: return null
+        // find supported mime, use first one as fallback
+        val (mime, mediaType) =
+            contentTypes.firstOrNull { (mime, _) ->
+                mime in preferredMimes
+            } ?: contentTypes.firstOrNull() ?: return null
 
         return SchemaWithMime(mime, required, mediaType.schema)
     }
@@ -137,35 +153,37 @@ data class OperationWithInfo(
         val responses = operation.responses ?: return null
         val responseEntries = responses.entries
 
-        //find first success response, use first one as fallback
-        val (codeStr, response) = responseEntries.firstOrNull { (code, _) ->
-            code.toIntOrNull() in 200..299
-        } ?: responseEntries.firstOrNull() ?: return null
+        // find first success response, use first one as fallback
+        val (codeStr, response) =
+            responseEntries.firstOrNull { (code, _) ->
+                code.toIntOrNull() in 200..299
+            } ?: responseEntries.firstOrNull() ?: return null
         val code = codeStr.toInt()
 
         val description: String? = response.description
 
         val contentEntries = response.content.orEmpty().entries
-        val (mime, mediaType) = contentEntries.firstOrNull { (mime, _) ->
-            mime == Constants.MIME_TYPE_JSON
-        } ?: contentEntries.firstOrNull() ?: return ResponseInfo(code, description, null)
+        val (mime, mediaType) =
+            contentEntries.firstOrNull { (mime, _) ->
+                mime == Constants.MIME_TYPE_JSON
+            } ?: contentEntries.firstOrNull() ?: return ResponseInfo(code, description, null)
 
         return ResponseInfo(
             code,
             description,
-            SchemaWithMime(mime, true, mediaType.schema)
+            SchemaWithMime(mime, true, mediaType.schema),
         )
     }
 
-    override fun toString(): String {
-        return "OperationWithInfo(path='$path', method=$method, operation=${operation.operationId}, tags=$tags, securityNames=$securityNames)"
-    }
+    override fun toString(): String =
+        "OperationWithInfo(path='$path', method=$method, operation=${operation.operationId}, tags=$tags, securityNames=$securityNames)"
 
     companion object {
-        private val preferredMimes = listOf(
-            Constants.MIME_TYPE_JSON,
-            Constants.MIME_TYPE_MULTIPART_FORM_DATA,
-            Constants.MIME_TYPE_URL_ENCODED
-        )
+        private val preferredMimes =
+            listOf(
+                Constants.MIME_TYPE_JSON,
+                Constants.MIME_TYPE_MULTIPART_FORM_DATA,
+                Constants.MIME_TYPE_URL_ENCODED,
+            )
     }
 }
