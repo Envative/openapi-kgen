@@ -14,7 +14,8 @@ data class OperationWithInfo(
     val tags: List<String>,
     val securityNames: List<String>,
 ) {
-    fun createOperationName() = operation.operationId ?: "${method.name.toLowerCase()}${path.capitalize()}"
+    fun createOperationName() =
+        operation.operationId ?: "${method.name.toLowerCase()}${path.capitalize()}"
 
     fun getModelNameList(components: Components): Set<String> {
         val set = mutableSetOf<String>()
@@ -32,6 +33,13 @@ data class OperationWithInfo(
                         if (subModelNames.isNotEmpty()) set.addAll(subModelNames)
                     }
                 }
+            }
+
+            model?.schema?.getRefTypeName()?.let { refTypeName ->
+                set.add(refTypeName)
+
+                val subModelNames = getSubModelNames(refTypeName, components)
+                if (subModelNames.isNotEmpty()) set.addAll(subModelNames)
             }
         }
 
